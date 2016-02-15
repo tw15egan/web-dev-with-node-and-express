@@ -10,10 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.13.3",
-    "express-handlebars": "^2.0.1"
+    "express-handlebars": "^3.0.0"
   },
   "devDependencies": {
     "chai": "^3.5.0",
+    "handlebars-helpers": "^0.5.8",
     "mocha": "^2.4.5"
   }
 }

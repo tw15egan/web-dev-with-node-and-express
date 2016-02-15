@@ -1,5 +1,5 @@
 // Fortune COOKIE
-var fortunes = [
+var fortuneCookies = [
   'Conquer your fears or they will conquer you',
   'Rivers need springs',
   'Do not fear what you do not know',
