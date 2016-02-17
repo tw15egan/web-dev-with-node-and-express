@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meadowlark Travel</title>
+
+  {{#if showTests}}
+    <link rel="stylesheet" href="/vendor/mocha.css">
+  {{/if}}
+
+  <script src="/vendor/jquery.min.js"></script>
+  {{{_sections.head}}}
+
+</head>
+<body>
+  <header>
+    <img src="/img/logo.jpg" alt="" />
+  </header>
+  {{{body}}}
+
+  {{{_sections.jquery}}}
+
+  {{#if showTests}}
+    <div id="mocha"></div>
+    <script src="/vendor/mocha.js"></script>
+    <script src="/vendor/chai.js"></script>
+    <script>
+      mocha.ui('tdd');
+      var assert = chai.assert;
+    </script>
+    <script src="/qa/tests-global.js"></script>
+    {{#if pageTestScript}}
+      <script src="{{pageTestScript}}"></script>
+    {{/if}}
+    <script>
+      mocha.run();
+    </script>
+  {{/if}}
+</body>
+</html>
