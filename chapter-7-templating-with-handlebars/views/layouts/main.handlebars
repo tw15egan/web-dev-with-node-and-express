@@ -8,11 +8,8 @@
     <link rel="stylesheet" href="/vendor/mocha.css">
   {{/if}}
 
-  <script type="text/javascript" src="/vendor/jquery.min.js">
-  if (typeof jQuery !== 'undefined') {
-    alert('hi');
-  }
-  </script>
+  <script src="/vendor/jquery.min.js"></script>
+  {{{_sections.head}}}
 
 </head>
 <body>
@@ -20,6 +17,8 @@
     <img src="/img/logo.jpg" alt="" />
   </header>
   {{{body}}}
+
+  {{{_sections.jquery}}}
 
   {{#if showTests}}
     <div id="mocha"></div>
