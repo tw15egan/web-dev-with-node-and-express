@@ -1,0 +1,22 @@
+{
+  "name": "web-dev-with-node-and-express",
+  "description": "Web Development with Node and Express",
+  "main": "meadowlark.js",
+  "authors": [
+    "TJ Egan <twegan@us.ibm.com>"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/tw15egan/web-dev-with-node-and-express",
+  "moduleType": [],
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^2.2.0"
+  }
+}
