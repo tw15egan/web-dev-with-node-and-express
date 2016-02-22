@@ -32,18 +32,6 @@ app.use(function (req, res, next) {
   next()
 })
 
-app.use('/upload', function (req, res, next) {
-  var now = Date.now()
-  jqupload.fileHandler({
-    uploadDir: function () {
-      return __dirname + '/public/uploads/' + now
-    },
-    uploadUrl: function () {
-      return '/uploads/' + now
-    }
-  })(req, res, next)
-})
-
 function getWeatherData () {
   return {
     locations: [
