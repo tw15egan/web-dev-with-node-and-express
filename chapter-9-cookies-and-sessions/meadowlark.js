@@ -1,7 +1,7 @@
 var express = require('express')
 var fortune = require('./lib/fortune.js')
 var formidable = require('formidable')
-var jqupload = require('jquery-file-upload-middleware')
+var credentials = require('./credentials.js')
 
 var app = express()
 
@@ -25,6 +25,13 @@ app.set('port', process.env.PORT || 3000)
 app.use(express.static(__dirname + '/public'))
 
 app.use(require('body-parser').urlencoded({ extended: true }))
+
+app.use(require('cookie-parser')(credentials.cookieSecret))
+app.use(require('express-session')({
+  resave: false,
+  saveUninitialized: false,
+  secret: credentials.cookieSecret
+}))
 
 // Testing route
 app.use(function (req, res, next) {
@@ -56,12 +63,24 @@ app.use(function (req, res, next) {
   next()
 })
 
+app.use(function(req, res, next) {
+  // If there's a flash message, transfer
+  // it to the contet, then clear it
+  res.locals.flash = req.session.flash
+  delete req.session.flash
+})
+
 // Default routes
 app.get('/', function (req, res) {
+  res.cookie('monster', 'nom nom')
+  res.cookie('signed_monster', 'nom nom', { signed: true })
   res.render('home')
 })
 
 app.get('/about', function (req, res) {
+  var monster = req.cookies.monster
+  var signedMonster = req.signedCookies.signed_monster
+  console.log(monster + ' ' + signedMonster)
   res.render('about', {
     fortune: fortune.getFortune(),
     pageTestScript: 'qa/tests-about.js'
