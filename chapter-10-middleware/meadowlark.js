@@ -1,6 +1,8 @@
 var express = require('express'),
-	fortune = require('./lib/fortune.js'),
-	formidable = require('formidable');
+	  fortune = require('./lib/fortune.js'),
+	  formidable = require('formidable'),
+    cartValidation = require('./lib/cartValidation.js'),
+    connect = require('connect');
 
 var app = express();
 
@@ -29,7 +31,7 @@ app.use(require('express-session')({
     secret: credentials.cookieSecret,
 }));
 app.use(express.static(__dirname + '/public'));
-app.use(require('body-parser')());
+app.use(require('body-parser').urlencoded({ extended: true}));
 
 // flash message middleware
 app.use(function(req, res, next){
@@ -40,12 +42,34 @@ app.use(function(req, res, next){
 	next();
 });
 
+app.use(cartValidation.checkWaivers)
+app.use(cartValidation.checkGuestCounts)
+
 // set 'showTests' context property if the querystring contains test=1
 app.use(function(req, res, next){
 	res.locals.showTests = app.get('env') !== 'production' &&
 		req.query.test === '1';
 	next();
 });
+
+app.use(function(req, res, next) {
+  console.log('Processing request for ' + req.url + '...');
+  next();
+})
+
+app.use(function(req, res, next) {
+  console.log('Terminating request');
+  res.send('Thanks for playing!');
+})
+
+app.use(function(req, res, next) {
+  console.log('I never get called :(');
+})
+
+app.use(function(req, res, next) {
+  console.log('Processing request for ' + req.url + '...');
+  next();
+})
 
 // mocked weather data
 function getWeatherData(){
