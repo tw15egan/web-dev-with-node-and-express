@@ -1,12 +1,12 @@
 var express = require('express'),
-	  fortune = require('./lib/fortune.js'),
-	  formidable = require('formidable'),
-    cartValidation = require('./lib/cartValidation.js'),
-    connect = require('connect');
+	fortune = require('./lib/fortune.js'),
+	formidable = require('formidable');
 
 var app = express();
 
 var credentials = require('./credentials.js');
+
+var emailService = require('./lib/email.js')(credentials);
 
 // set up handlebars view engine
 var handlebars = require('express3-handlebars').create({
@@ -31,7 +31,7 @@ app.use(require('express-session')({
     secret: credentials.cookieSecret,
 }));
 app.use(express.static(__dirname + '/public'));
-app.use(require('body-parser').urlencoded({ extended: true}));
+app.use(require('body-parser')());
 
 // flash message middleware
 app.use(function(req, res, next){
@@ -42,34 +42,12 @@ app.use(function(req, res, next){
 	next();
 });
 
-app.use(cartValidation.checkWaivers)
-app.use(cartValidation.checkGuestCounts)
-
 // set 'showTests' context property if the querystring contains test=1
 app.use(function(req, res, next){
 	res.locals.showTests = app.get('env') !== 'production' &&
 		req.query.test === '1';
 	next();
 });
-
-app.use(function(req, res, next) {
-  console.log('Processing request for ' + req.url + '...');
-  next();
-})
-
-app.use(function(req, res, next) {
-  console.log('Terminating request');
-  res.send('Thanks for playing!');
-})
-
-app.use(function(req, res, next) {
-  console.log('I never get called :(');
-})
-
-app.use(function(req, res, next) {
-  console.log('Processing request for ' + req.url + '...');
-  next();
-})
 
 // mocked weather data
 function getWeatherData(){
@@ -116,12 +94,6 @@ app.get('/about', function(req,res){
 		pageTestScript: '/qa/tests-about.js'
 	} );
 });
-app.get('/tours/hood-river', function(req, res){
-	res.render('tours/hood-river');
-});
-app.get('/tours/oregon-coast', function(req, res){
-	res.render('tours/oregon-coast');
-});
 app.get('/tours/request-group-rate', function(req, res){
 	res.render('tours/request-group-rate');
 });
@@ -151,6 +123,73 @@ function NewsletterSignup(){
 }
 NewsletterSignup.prototype.save = function(cb){
 	cb();
+};
+
+// mocking product database
+function Product(){
+}
+Product.find = function(conditions, fields, options, cb){
+	if(typeof conditions==='function') {
+		cb = conditions;
+		conditions = {};
+		fields = null;
+		options = {};
+	} else if(typeof fields==='function') {
+		cb = fields;
+		fields = null;
+		options = {};
+	} else if(typeof options==='function') {
+		cb = options;
+		options = {};
+	}
+	var products = [
+		{
+			name: 'Hood River Tour',
+			slug: 'hood-river',
+			category: 'tour',
+			maximumGuests: 15,
+			sku: 723,
+		},
+		{
+			name: 'Oregon Coast Tour',
+			slug: 'oregon-coast',
+			category: 'tour',
+			maximumGuests: 10,
+			sku: 446,
+		},
+		{
+			name: 'Rock Climbing in Bend',
+			slug: 'rock-climbing/bend',
+			category: 'adventure',
+			requiresWaiver: true,
+			maximumGuests: 4,
+			sku: 944,
+		}
+	];
+	cb(null, products.filter(function(p) {
+		if(conditions.category && p.category!==conditions.category) return false;
+		if(conditions.slug && p.slug!==conditions.slug) return false;
+		if(isFinite(conditions.sku) && p.sku!==Number(conditions.sku)) return false;
+		return true;
+	}));
+};
+Product.findOne = function(conditions, fields, options, cb){
+	if(typeof conditions==='function') {
+		cb = conditions;
+		conditions = {};
+		fields = null;
+		options = {};
+	} else if(typeof fields==='function') {
+		cb = fields;
+		fields = null;
+		options = {};
+	} else if(typeof options==='function') {
+		cb = options;
+		options = {};
+	}
+	Product.find(conditions, fields, options, function(err, products){
+		cb(err, products && products.length ? products[0] : null);
+	});
 };
 
 var VALID_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
@@ -203,6 +242,76 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res){
         console.log(files);
         res.redirect(303, '/thank-you');
     });
+});
+app.get('/tours/:tour', function(req, res, next){
+	Product.findOne({ category: 'tour', slug: req.params.tour }, function(err, tour){
+		if(err) return next(err);
+		if(!tour) return next();
+		res.render('tour', { tour: tour });
+	});
+});
+app.get('/adventures/:subcat/:name', function(req, res, next){
+	Product.findOne({ category: 'adventure', slug: req.params.subcat + '/' + req.params.name  }, function(err, adventure){
+		if(err) return next(err);
+		if(!adventure) return next();
+		res.render('adventure', { adventure: adventure });
+	});
+});
+
+var cartValidation = require('./lib/cartValidation.js');
+
+app.use(cartValidation.checkWaivers);
+app.use(cartValidation.checkGuestCounts);
+
+app.post('/cart/add', function(req, res, next){
+	var cart = req.session.cart || (req.session.cart = { items: [] });
+	Product.findOne({ sku: req.body.sku }, function(err, product){
+		if(err) return next(err);
+		if(!product) return next(new Error('Unknown product SKU: ' + req.body.sku));
+		cart.items.push({
+			product: product,
+			guests: req.body.guests || 0,
+		});
+		res.redirect(303, '/cart');
+	});
+});
+app.get('/cart', function(req, res, next){
+	var cart = req.session.cart;
+	if(!cart) next();
+	res.render('cart', { cart: cart });
+});
+app.get('/cart/checkout', function(req, res, next){
+	var cart = req.session.cart;
+	if(!cart) next();
+	res.render('cart-checkout');
+});
+app.get('/cart/thank-you', function(req, res){
+	res.render('cart-thank-you', { cart: req.session.cart });
+});
+app.get('/email/cart/thank-you', function(req, res){
+	res.render('email/cart-thank-you', { cart: req.session.cart, layout: null });
+});
+app.post('/cart/checkout', function(req, res){
+	var cart = req.session.cart;
+	if(!cart) next(new Error('Cart does not exist.'));
+	var name = req.body.name || '', email = req.body.email || '';
+	// input validation
+	if(!email.match(VALID_EMAIL_REGEX)) return res.next(new Error('Invalid email address.'));
+	// assign a random cart ID; normally we would use a database ID here
+	cart.number = Math.random().toString().replace(/^0\.0*/, '');
+	cart.billing = {
+		name: name,
+		email: email,
+	};
+    res.render('email/cart-thank-you',
+    	{ layout: null, cart: cart }, function(err,html){
+	        if( err ) console.log('error in email template');
+	        emailService.send(cart.billing.email,
+	        	'Thank you for booking your trip with Meadowlark Travel!',
+	        	html);
+	    }
+    );
+    res.render('cart-thank-you', { cart: cart });
 });
 
 // 404 catch-all handler (middleware)
